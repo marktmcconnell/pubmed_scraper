@@ -1,0 +1,440 @@
+---
+title: "R Notebook"
+output: html_notebook
+editor_options: 
+  chunk_output_type: console
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r}
+plot(cars)
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
+
+
+```{r}
+
+
+library(RSelenium)
+library(tidyverse)
+library(rvest)
+#team_df <- read.csv("~/Documents/cfb/updated_pff_team_df.csv",row.names = 1)
+
+
+librar
+
+library(easyPubMed)
+#my_query <- 'Matthias Kretzler[AU] AND "2016"[PDAT]:"2023"[PDAT]'
+
+query <- 'Matthias Kretzler[AU] AND "2016"[PDAT]:"2023"[PDAT]'
+
+
+rentrez_out <- entrez_search(db="pubmed", term="Matthias Kretzler",)
+
+
+library(RISmed)
+
+
+uti_out <- EUtilsSummary(query =query)
+
+pmids <- uti_out@PMID
+# this only gets the first 20
+#my_entrez_id <- get_pubmed_ids(my_query)
+# make a season_scraper
+
+#driver <- rsDriver(remoteServerAddr = "localhost", port=4445L, browser=c("firefox"), version = "latest")
+
+
+pdfprof <- makeFirefoxProfile(list(
+  "pdfjs.disabled" = TRUE,
+  "plugin.scan.plid.all" = FALSE,
+  "plugin.scan.Acrobat" = "99.0",
+  "browser.helperApps.neverAsk.saveToDisk" = 'application/pdf'))
+
+driver <- rsDriver(remoteServerAddr = "localhost", port=4446L, browser=c("firefox"), version = "latest", extraCapabilities = pdfprof)
+
+
+#driver <- remoteDriver(remoteServerAddr = "localhost", port=4445L, browser=c("firefox"), version = "latest",)
+
+remDr <- driver[["client"]]
+   
+dir_path <- "~/Downloads/crawlpdfs/" 
+
+pmid <- "29980527"
+
+pmids <- unlist(my_entrez_id$IdList)
+
+
+
+  arrange(modificationTime)
+
+for(each_i in 8:length(pmids)){
+  print(each_i)
+
+  cur_pmid <- pmids[each_i]
+  
+  # check if its a preprint, if so lets grab it
+  
+  
+  
+  
+  remDr$navigate(paste0("https://pubmed.ncbi.nlm.nih.gov/",cur_pmid,"/"))
+    Sys.sleep(rexp(1,0.5))
+
+  which_to_click <- remDr$findElement(using = "css selector",value = "#full-view-identifiers > li:nth-child(2) > span:nth-child(1) > a:nth-child(2)")
+  cur_pmc <- which_to_click$getElementText()[[1]]
+  
+  # need to find if its preprint..
+  
+  images <- remDr$findElements(using = "tag", value = "img")
+  
+  src_attributes <- unlist(lapply(images, function(img) {
+    return(img$getElementAttribute("src"))
+  }))
+
+# here was my logic for biorxiv and medrxiv
+  
+  # yes...
+  if("https://cdn.ncbi.nlm.nih.gov/corehtml/query/egifs/https:--biorxiv.s3.amazonaws.com-bioRxiv_link_icon.gif" %in% src_attributes | "https://cdn.ncbi.nlm.nih.gov/corehtml/query/egifs/https:--medrxiv.s3.amazonaws.com-medRxiv_link_icon.gif" %in% src_attributes){
+    # go there..
+    # get the DOI
+    
+    doi_flag <-   which_to_click <- remDr$findElement(using = "css selector",value = "#full-view-identifiers > li:nth-child(2) > span:nth-child(1) > a:nth-child(2)")
+
+    
+    cur_url <- paste0("https://doi.org",doi_vec)
+      remDr$navigate(cur_url)
+    # click download pdf
+
+    # append name with biorxiv
+    file_list <- list.files(dir_path, full.names = TRUE)
+
+# Get file information and sort by modification time
+  sorted_files <- file_list %>%
+    file.info() %>%
+    arrange(desc(mtime))
+
+
+  file.rename(rownames(sorted_files)[1],paste0(dir_path,cur_pmid,"_biorxiv.pdf"))
+  
+  } else if(grepl("PMC",cur_pmc)){
+    
+  new_url <- paste0("https://www.ncbi.nlm.nih.gov/pmc/articles/",cur_pmc,"/")
+  
+  remDr$navigate(new_url)
+
+  #elemento <- remDr$findElement(using = "css selector", value = "li.pdf-link.other_item")
+  
+  #cur_pmc2 <- element$getElementAttribute("href")
+  
+  #pdf_div <- remDr$findElement(using = "css selector",value = ".pdf-link.other_item")
+  #element <- remDr$findElement(using = "css selector", value = "li.pdf-link.other_item a.int-view")
+  
+  elementx <- remDr$findElement(using = "xpath", value= "/html/body/main/aside/div/section[1]/ul/li/a")
+  
+  # try this next
+  #element <- remDr$findElement(using = "xpath", value = "//a[contains(@href, '.pdf')]") # Assuming this 
+  
+  elementx$clickElement()
+    Sys.sleep(rexp(1,0.5)+5)
+
+  # need to rename paper.
+  # List all files in the directory
+  file_list <- list.files(dir_path, full.names = TRUE)
+
+# Get file information and sort by modification time
+  sorted_files <- file_list %>%
+    file.info() %>%
+    arrange(desc(mtime))
+
+
+  file.rename(rownames(sorted_files)[1],paste0(dir_path,cur_pmid,"_pmc.pdf"))
+  
+  #element$clickElement()
+  #elemento$clickElement()
+  
+  #download.file(url = cur_pmc2[[1]],paste0("~/pdf_downloads/",pmid,".pdf"))
+  
+  #remDr$executeScript("document.getElementById('downloadButton').click();")  # Replace with the actual JavaScript code
+  
+  
+  #r#emDr$findElements('css selector', 'html')[[1]]$sendKeysToElement(list(key='control', 'p'))
+  
+  }else{
+    # try scihub if 2020 or older
+    
+    # get the year
+    
+    # if year 2020 or before try scihub.
+    
+    
+    
+    print("no pmc found too complex")
+    
+    
+  }
+  # if we need to stop
+  
+
+}
+
+
+
+  driver$server$stop()
+  
+  
+  scrape_pubmed(query = my_query,out_dir = "~/test_pdf/")
+
+```
+
+```{r}
+library(RSelenium)
+
+
+out_dir = "~/Downloads/susztak/"
+
+
+  pdfprof <- makeFirefoxProfile(list(
+    "pdfjs.disabled" = TRUE,
+    "plugin.scan.plid.all" = FALSE,
+    "plugin.scan.Acrobat" = "99.0",
+    "browser.helperApps.neverAsk.saveToDisk" = 'application/pdf',
+    "print.print_to_file" = TRUE,
+  "print.always_print_silent" = TRUE, #bypasses the print dialogue
+  "print.show_print_progress" = F,
+  "print.save_as_pdf.links.enabled" = TRUE,
+  #"print_printer", "Mozilla Save to PDF",
+    "print.printer"=  "Mozilla Save to PDF",
+"print.printer.Mozilla_Save_to_PDF.print_to_file" = TRUE,
+  'print.printer.Mozilla_Save_to_PDF.print_to_filename' = paste(out_dir,"/cur_pdf.pdf")))
+  #"print.printer_Mozilla_Save_to_PDF.print_to_file", TRUE,
+  #'print.printer_Mozilla_Save_to_PDF.print_to_filename', paste(out_dir,"/cur_pdf.pdf")))
+  
+  driver <- rsDriver(remoteServerAddr = "localhost", port=4447L, browser=c("firefox"), version = "latest", extraCapabilities = pdfprof)
+  
+
+#     pdfprof_short <- makeFirefoxProfile(list(
+#     "print.printer" = "Mozilla Save to PDF",
+# "print.printer_Mozilla_Save_to_PDF.print_to_file" = TRUE,
+#   'print.printer_Mozilla_Save_to_PDF.print_to_filename' =  paste(out_dir,"/cur_pdf.pdf")))
+# 
+#     
+#     
+#      pdfprof_short <- makeFirefoxProfile(list(
+#     "print.prefer_system_dialog"= T))
+#   # no caps for troubleshooting
+#   driver <- rsDriver(remoteServerAddr = "localhost", port=4448L, browser=c("firefox"), version = "latest",extraCapabilities = pdfprof_short)
+  
+    #driver <- rsDriver(remoteServerAddr = "localhost", port=4447L, browser=c("firefox"), version = "latest")
+  # driver <- remoteDriver(remoteServerAddr = "localhost", port=4445L, browser=c("firefox"), version = "latest",extraCapabilities = pdfprof_short)
+  
+  remDr <- driver[["client"]]
+  
+  
+  # under settings, general, set download folder to the same as out_dir
+
+  
+  # ben humphreys
+ #my_query <- '0000-0002-6420-8703[ORCID] AND "2016"[PDAT]:"2023"[PDAT])'
+  
+  # susztak
+    #my_query <- '0000-0002-1005-3726[ORCID] AND "2016"[PDAT]:"2023"[PDAT])'
+
+  # kretzler lets try 0000-0003-4064-0582
+  #my_query <- 'Matthias Kretzler[AU] AND "2016"[PDAT]:"2023"[PDAT]'
+
+  
+  # paolo cravedi  0000-0001-7837-0923
+      my_query <- '0000-0001-7837-0923[ORCID] AND "2016"[PDAT]:"2023"[PDAT])'
+
+  # matthew sampson 0000-0001-9560-076X
+   #shankland
+      
+      
+            my_query <- '"Shankland SJ"[Author] AND "2016"[PDAT]:"2023"[PDAT])'
+
+       # this doenst work      
+      # my_query <- '"34716239"[Author ID] AND "2016"[PDAT]:"2023"[PDAT])'
+      # for more susztak
+            author_name <- "Susztak K"
+
+# Define the search terms for the title
+title_terms <- "(renal[TI] OR kidney[TI] OR podocyte[TI] OR glomeru*[TI] or neph*[TI] or 'macula densa'[TI])"
+
+
+            author_name <- "Humphreys BD"
+            author_name <- "Ishibe S"
+
+#
+# Construct the query
+
+            
+                        author_name <- "Cravedi P"
+                        # TODO
+                        author_name <- "Altintas M"
+                        author_name <- "Kretzler M"
+                        author_name <- "Kretzler M"
+                        author_name <- "Mariani L"
+                        author_name <- "J Peti-Peterdi"
+                        author_name <- "Freedman BS"
+                        author_name <- "Freedman BS"
+                        author_name <- "Salant DJ"
+
+                        author_name <- "Humphreys BD [Author] OR Cravedi P [Author] OR Humphreys BD [Author] OR Kretzler M [Author] OR Susztak K [Author] OR Freedman BS [Author] OR Salant DJ [Author] OR Bonventre JV [Author] OR J Peti-Peterdi [Author] OR Mariani L [Author] OR Beck LH [Author] OR Miner JH [Author]  OR Shankland SJ [Author] OR Pollak MR [Author] OR Freedman BI [Author] OR Reiser J  [Author] OR Nishimakamura R  [Author] OR Olabisi OA  [Author] OR McMahon AP  [Author]"
+
+                        # TODO kretzler
+                        # TODO ?
+
+#my_query <- paste(author_name, "AND", title_terms,'AND "2005"[PDAT]:"2024"[PDAT]')
+
+my_query <- paste(author_name, "AND", title_terms,'AND "2023"[PDAT]:"2024"[PDAT]')
+my_query <- paste(author_name, "AND", title_terms,'AND "2021"[PDAT]:"2022"[PDAT]')
+my_query <- paste(author_name, "AND", title_terms,'AND "2019"[PDAT]:"2020"[PDAT]')
+my_query <- paste(author_name, "AND", title_terms,'AND "2017"[PDAT]:"2018"[PDAT]')
+my_query <- paste(author_name, "AND", title_terms,'AND "2015"[PDAT]:"2016"[PDAT]')
+my_query <- paste(author_name, "AND", title_terms,'AND "2013"[PDAT]:"2014"[PDAT]')
+
+# next up would be kretzler
+
+scrape_pubmed(query = my_query,out_dir = out_dir)
+  
+    
+driver$server$stop()
+
+    # if its not loadable, keep track... put it in a file
+    
+
+
+
+    
+    
+```
+
+
+
+
+```{r}
+
+# chrome test
+library(RSelenium)
+
+#RSelenium::
+
+# Define Chrome options
+ecaps <- list(chrome_options = list(
+  prefs = list(
+    'printing.print_preview_sticky_settings.appState' = jsonlite::toJSON(list(
+      version = 2,
+      recentDestinations = list(list(
+        id = 'Save as PDF',
+        origin = 'local',
+        account = ''
+      )),
+      selectedDestinationId = 'Save as PDF',
+      isHeaderFooterEnabled = FALSE
+      
+    )),
+    'download.default_directory' = "/path/to/download/directory"
+  ),
+  args = c('--kiosk-printing')
+    #binary = "/usr/local/bin/chromedriver" # Path to your chromedriver
+
+))
+
+# Create a remote driver with the defined options
+#remDr <- remoteDriver(browserName = "chrome", extraCapabilities = chrome_options)
+
+
+  driver <- rsDriver(remoteServerAddr = "localhost", port=4447L,browser=c("chrome"), version = "latest",extraCapabilities = ecaps)
+#remDr$open()
+
+    driver$server$stop()
+
+```
+
+
+
+
+```{r}
+library(RSelenium)
+
+# Define the download path
+download_path <- "~/Downloads/"
+
+# Define Chrome options
+eCaps <- list(
+  chromeOptions = list(
+    prefs = list(
+      "download.default_directory" = download_path,
+      "download.prompt_for_download" = FALSE,
+      "download.directory_upgrade" = TRUE,
+      "plugins.always_open_pdf_externally" = TRUE,
+      "printing.print_preview_sticky_settings.appState" = list(
+        "version" = 2,
+        "isGcpPromoDismissed" = FALSE,
+        "selectedDestinationId" = "Save as PDF",
+        "recentDestinations" = list(
+          list(
+            "id" = "Save as PDF",
+            "origin" = "local",
+            "account" = "",
+            "capabilities" = list(
+              "version" = "1.0",
+              "collate" = TRUE,
+              "color" = list(
+                "option" = list(
+                  "is_default" = TRUE,
+                  "type" = "STANDARD_COLOR",
+                  "vendor_id" = "Color"
+                )
+              ),
+              "copies" = TRUE,
+              "dpi" = list(
+                "option" = list(
+                  "horizontal_dpi" = 600,
+                  "is_default" = TRUE,
+                  "vertical_dpi" = 600,
+                  "vendor_id" = "600dpi"
+                )
+              ),
+              "duplex" = list(
+                "option" = list(
+                  "is_default" = TRUE,
+                  "type" = "NO_DUPLEX",
+                  "vendor_id" = "Standard"
+                )
+              ),
+              "media_size" = list(
+                "option" = list(
+                  "height_microns" = 297000,
+                  "is_default" = TRUE,
+                  "name" = "ISO_A4",
+                  "vendor_id" = "iso_a4_210x297mm",
+                  "width_microns" = 210000
+                )
+              )
+            )
+          )
+        ),
+        "version" = 2
+      )
+    )
+  )
+)
+
+# Start the browser with the defined capabilities
+rD <- rsDriver(browser = "chrome", extraCapabilities = eCaps)
+remDr <- rD[["client"]]
+
+```
+
+
